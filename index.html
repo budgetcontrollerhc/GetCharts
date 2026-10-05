@@ -1,0 +1,227 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sheet Report Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f5f7;--fg:#1d2330;--card:#fff;--bd:#d9dde4;--ac:#2456d6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--fg:#e6e8ee;--card:#1d222b;--bd:#343b48;--ac:#7aa2ff}}
+:root[data-theme="dark"]{--bg:#14171d;--fg:#e6e8ee;--card:#1d222b;--bd:#343b48;--ac:#7aa2ff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,Segoe UI,Roboto,sans-serif}
+#ctl{padding:10px;max-width:900px;margin:auto}
+h1{font-size:18px;margin:6px 0 10px}
+details{background:var(--card);border:1px solid var(--bd);border-radius:8px;margin-bottom:8px;padding:8px 10px}
+summary{font-weight:600;cursor:pointer}
+fieldset{border:1px solid var(--bd);border-radius:6px;margin:8px 0 0;padding:6px 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:8px;align-items:center}
+.list{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px}
+label{display:inline-flex;gap:4px;align-items:center}
+input[type=text],input[type=number],select,textarea{background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:5px 7px;font:inherit;max-width:100%;box-sizing:border-box}
+input[type=text]{min-width:120px;flex:1}
+button{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:8px 14px;font:inherit;cursor:pointer}
+small{opacity:.7}
+#wrap{overflow-x:auto;padding:0 10px 20px}
+.page{box-sizing:border-box;background:#fff;color:#000;margin:0 auto 14px;box-shadow:0 1px 6px #0004;display:flex;flex-direction:column;overflow:hidden;font-size:12px}
+.bd{flex:1;min-height:0;overflow:hidden;padding-bottom:1.5mm}
+.cn{font-size:10px;line-height:1.2;font-style:italic;text-align:right;margin-top:2px}
+.page h2{font-size:16px;margin:0 0 8px}
+.gt{font-weight:700;margin:8px 0 3px;font-size:13px}
+.ob{display:inline-block;border:1px solid #777;background:#fff8d6;padding:3px 8px;margin:2px 0 4px}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th,td{border:1px solid #999;padding:3px 5px;text-align:left;overflow-wrap:anywhere;position:relative}
+th{background:#e8ebf1}
+tfoot td,tr.tot td{font-weight:700;background:#f3f4f7}
+.n{text-align:right}.neg{color:#b00020}
+.rz{position:absolute;right:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;touch-action:none}
+.rz:hover{background:#2456d655}
+.ft{flex:none;padding-top:5px;border-top:1px solid #777;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;white-space:pre-wrap}
+@media print{
+ body{background:#fff}#ctl{display:none}#wrap{padding:0;overflow:visible}
+ .page{box-shadow:none;margin:0;page-break-after:always;break-after:page}
+ .page:last-child{page-break-after:auto;break-after:auto}.rz{display:none}
+}
+</style></head><body>
+<div id="ctl">
+<h1>Sheet Report Builder</h1>
+<details open><summary>1. Data</summary>
+ <div class="row"><input type="file" id="file" accept=".xlsx,.xls,.ods,.csv,.xlsm"></div>
+ <div class="row"><label>Sheet <select id="sheet"></select></label><label>Rows to skip above header <input type="number" id="skip" value="0" min="0" style="width:60px"></label></div>
+ <small>Runs in your browser; the file is never uploaded.</small></details>
+<details><summary>2. Columns to show</summary><div class="list" id="showL"></div></details>
+<details><summary>3. Show a column only on a condition</summary>
+ <small>Each rule decides when a column is displayed.</small><div id="ruleL"></div>
+ <div class="row"><button id="addR" type="button">+ Add rule</button></div></details>
+<details><summary>4. Tables &amp; pages</summary>
+ <small>Separate table for each combination of:</small><div class="list" id="grpL"></div>
+ <div style="margin-top:8px"><small>Start a new page when these change:</small></div><div class="list" id="brkL"></div>
+ <div class="row"><label><input type="checkbox" id="tot" checked> Total row under each table</label>
+ <button id="rw" type="button">Reset column widths</button></div>
+ <small>Drag the right edge of any column heading in the preview to resize it.</small></details>
+<details><summary>5. Opening &amp; running balance</summary>
+ <div class="row"><label>Opening balance <select id="osrc"><option value="none">None</option><option value="col">From column (first row of each table)</option><option value="sum">Sum of column per table</option><option value="man">Enter manually per table</option><option value="sheet">From another sheet in the file (matched by table name)</option></select></label>
+ <label>Column <select id="ocol"></select></label></div>
+ <div class="row"><label>Proposed allotment column <select id="acol"></select></label><label>Balance column title <input type="text" id="bname" value="Balance after allotment"></label><label>Balance column position <select id="bpos"><option value="E">At the end</option></select></label></div>
+ <div id="shRow" style="display:none"><div class="row"><label>Balance sheet <select id="bsh"></select></label><label>Rows to skip <input type="number" id="bskip" value="0" min="0" style="width:56px"></label><label>Balance amount column <select id="bvc"></select></label></div><small>Match each table to a balance-sheet row on up to three columns (e.g. Head and Preliminary Unit):</small><div class="row"><label>1. Table column <select id="kd0"></select></label><label>= balance-sheet column <select id="kb0"></select></label></div><div class="row"><label>2. Table column <select id="kd1"></select></label><label>= balance-sheet column <select id="kb1"></select></label></div><div class="row"><label>3. Table column <select id="kd2"></select></label><label>= balance-sheet column <select id="kb2"></select></label></div></div>
+ <div id="shMsg"></div><div class="list" id="manL"></div></details>
+<details><summary>6. Last-page summary</summary>
+ <div class="row"><label>Title <input type="text" id="sumT" value="Summary"></label><label><input type="checkbox" id="sumOn" checked> Include</label><label><input type="checkbox" id="cnt" checked> Row count</label></div>
+ <small>Calculation per column (also used in table total rows):</small><div class="list" id="sumL"></div></details>
+<details><summary>7. Page setup</summary>
+ <div class="row"><label>Paper size <select id="paper"><option>A4</option><option>Letter</option><option>Legal</option></select></label>
+ <label>Orientation <select id="ori"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label></div>
+ <div class="row"><span>Margins (inches):</span><label>Top <input type="number" id="mT" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Right <input type="number" id="mR" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Bottom <input type="number" id="mB" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Left <input type="number" id="mL" value="1" step="0.1" min="0" max="3" style="width:56px"></label></div>
+ <div class="row"><label>Report title <input type="text" id="title" value="Report"></label><label><input type="checkbox" id="tOn" checked> Show title on every page</label></div></details>
+<details><summary>8. Text formatting</summary><div id="fmt"></div></details>
+<details><summary>9. Footer</summary><small>Tokens: {page} {pages} {date} {title}. Left, centre and right sections are formatted separately.</small><div id="fsec"></div></details>
+<div class="row"><button id="print">Print / Save as PDF</button><span id="info"></span></div>
+</div>
+<div id="wrap"><div id="out"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let balRows=[],rows=[],cols=[],wb=null,colW={},obal={},manSig='',pct=[],curVis=[];
+const FONTS=[['Arial','Arial,sans-serif'],['Times New Roman',"'Times New Roman',serif"],['Georgia','Georgia,serif'],['Verdana','Verdana,sans-serif'],['Calibri','Calibri,Arial,sans-serif'],['Courier New',"'Courier New',monospace"],['Mangal (Hindi)',"Mangal,'Noto Sans Devanagari',sans-serif"],['Nirmala UI (Hindi)',"'Nirmala UI','Noto Sans Devanagari',sans-serif"]];
+const fc=(k,n,sz,al,b,txt)=>`<fieldset><legend>${n}</legend>${txt===undefined?'':`<textarea id="f${k}" rows="2" style="width:100%">${txt}</textarea>`}<div class="row"><label>Font <select id="f${k}f">${FONTS.map(f=>`<option value="${f[1]}">${f[0]}</option>`).join('')}</select></label><label>Size <input type="number" id="f${k}s" value="${sz}" min="6" max="40" style="width:52px"></label><label><input type="checkbox" id="f${k}b" ${b?'checked':''}><b>B</b></label><label><input type="checkbox" id="f${k}i"><i>I</i></label><label><input type="checkbox" id="f${k}u"><u>U</u></label><label>Align <select id="f${k}a">${(txt===undefined?['auto']:[]).concat(['left','center','right','justify']).map(a=>`<option ${a===al?'selected':''}>${a}</option>`).join('')}</select></label><input type="color" id="f${k}c" value="${txt===undefined?'#000000':'#333333'}"></div></fieldset>`;
+$('fmt').innerHTML=fc('T','Report title',16,'left',1)+fc('H','Column headings',12,'auto',1)+fc('B','Table body',12,'auto',0);
+$('fsec').innerHTML=fc('L','Left section',11,'left',0,'{title}')+fc('C','Centre section',11,'center',0,'Page {page} of {pages}')+fc('R','Right section',11,'right',0,'{date}');
+const cs=k=>`font-family:${$('f'+k+'f').value};font-size:${+$('f'+k+'s').value||12}px;font-weight:${$('f'+k+'b').checked?700:400};font-style:${$('f'+k+'i').checked?'italic':'normal'};text-decoration:${$('f'+k+'u').checked?'underline':'none'};color:${$('f'+k+'c').value}`;
+const al=k=>{const a=$('f'+k+'a').value;return a==='auto'?'':`text-align:${a}`};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num=v=>{const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n};
+const fmt=n=>n.toLocaleString('en-IN',{maximumFractionDigits:2});
+const got=nm=>[...document.querySelectorAll(`input[name=${nm}]:checked`)].map(i=>i.value);
+const checks=(id,nm,sel)=>$(id).innerHTML=cols.map(c=>`<label><input type=checkbox name="${nm}" value="${esc(c)}" ${sel(c)?'checked':''}>${esc(c)}</label>`).join('');
+const isNum=c=>rows.length&&rows.slice(0,50).filter(r=>r[c]!=='').every(r=>!isNaN(parseFloat(String(r[c]).replace(/,/g,''))));
+function agg(rs,c,f){const v=rs.map(r=>r[c]).filter(x=>x!=='');if(f==='count')return v.length;const n=v.map(num);if(!n.length)return 0;
+ return f==='sum'?n.reduce((a,b)=>a+b,0):f==='avg'?n.reduce((a,b)=>a+b,0)/n.length:f==='min'?Math.min(...n):Math.max(...n)}
+const fns=()=>[...document.querySelectorAll('select[data-sc]')].filter(s=>s.value).map(s=>({c:s.dataset.sc,f:s.value}));
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+ $('sheet').innerHTML=wb.SheetNames.map(n=>`<option>${esc(n)}</option>`).join('');$('bsh').innerHTML=$('sheet').innerHTML;if(wb.SheetNames[1])$('bsh').value=wb.SheetNames[1];load();loadBal()};
+$('sheet').onchange=$('skip').onchange=()=>wb&&load();
+let balHeads=[];
+const norm=x=>String(x??'').trim().toLowerCase().replace(/\s+/g,' ');
+function fillPairs(){
+ const od='<option value="">— none —</option>'+cols.map(c=>`<option>${esc(c)}</option>`).join(''),ob='<option value="">— none —</option>'+balHeads.map(c=>`<option>${esc(c)}</option>`).join('');
+ for(let i=0;i<3;i++){$('kd'+i).innerHTML=od;$('kb'+i).innerHTML=ob}
+ let n=0;balHeads.slice(0,-1).forEach(h=>{const c=cols.find(x=>norm(x)===norm(h));if(c&&n<3){$('kd'+n).value=c;$('kb'+n).value=h;n++}})}
+function loadBal(r=true){if(!wb||!$('bsh').value)return;
+ balRows=XLSX.utils.sheet_to_json(wb.Sheets[$('bsh').value],{defval:'',raw:false,range:+$('bskip').value||0});
+ balHeads=balRows.length?Object.keys(balRows[0]):[];
+ $('bvc').innerHTML=balHeads.map(c=>`<option>${esc(c)}</option>`).join('');if(balHeads.length)$('bvc').value=balHeads[balHeads.length-1];
+ fillPairs();r&&render()}
+$('bsh').onchange=$('bskip').onchange=()=>loadBal();
+function load(){
+ rows=XLSX.utils.sheet_to_json(wb.Sheets[$('sheet').value],{defval:'',raw:false,range:+$('skip').value||0});
+ cols=rows.length?Object.keys(rows[0]):[];colW={};obal={};manSig='';$('ruleL').innerHTML='';fillPairs();
+ checks('showL','show',()=>1);checks('grpL','grp',()=>0);checks('brkL','brk',()=>0);
+ const op=cols.map(c=>`<option>${esc(c)}</option>`).join('');
+ $('ocol').innerHTML=op;$('acol').innerHTML='<option value="">— none —</option>'+op;$('bpos').innerHTML='<option value="E">At the end</option><option value="S">At the start</option>'+cols.map(c=>`<option value="A:${esc(c)}">After: ${esc(c)}</option>`).join('');
+ $('sumL').innerHTML=cols.map(c=>`<label>${esc(c)} <select data-sc="${esc(c)}"><option value="">—</option>${['sum','avg','min','max','count'].map(f=>`<option ${isNum(c)&&f==='sum'?'selected':''}>${f}</option>`).join('')}</select></label>`).join('');
+ render()}
+const OPS=['=','≠','>','≥','<','≤','contains','empty','notempty'];
+function addRule(){if(!cols.length)return;const o=cols.map(c=>`<option>${esc(c)}</option>`).join('');
+ const d=document.createElement('div');d.className='row rule';
+ d.innerHTML=`Show <select class="rt">${o}</select> <select class="rm"><option value="any">in a table if any row</option><option value="all">in a table if all rows</option><option value="row">cell only in rows</option></select> where <select class="rc"><option value="">(same column)</option>${o}</select> <select class="ro">${OPS.map(x=>`<option>${x}</option>`).join('')}</select> <input type="text" class="rv" style="min-width:90px"> <button type="button" class="rx">✕</button>`;
+ $('ruleL').appendChild(d);render()}
+$('addR').onclick=addRule;
+$('ruleL').addEventListener('click',e=>{if(e.target.classList.contains('rx')){e.target.closest('.rule').remove();render()}});
+const test=(v,op,x)=>{const a=String(v??'').trim(),b=String(x).trim(),na=parseFloat(a.replace(/,/g,'')),nb=parseFloat(b.replace(/,/g,'')),nn=!isNaN(na)&&!isNaN(nb),la=a.toLowerCase(),lb=b.toLowerCase();
+ switch(op){case 'empty':return a==='';case 'notempty':return a!=='';case 'contains':return la.includes(lb);
+ case '=':return nn?na===nb:la===lb;case '≠':return nn?na!==nb:la!==lb;case '>':return nn?na>nb:a>b;case '≥':return nn?na>=nb:a>=b;case '<':return nn?na<nb:a<b;case '≤':return nn?na<=nb:a<=b}return true};
+const rules=()=>[...document.querySelectorAll('.rule')].map(d=>({t:d.querySelector('.rt').value,m:d.querySelector('.rm').value,c:d.querySelector('.rc').value,o:d.querySelector('.ro').value,v:d.querySelector('.rv').value}));
+function render(){
+ const out=$('out');out.innerHTML='';if(!rows.length)return;
+ const show=got('show'),gc=got('grp'),bc=got('brk'),tot=$('tot').checked,F=fns(),oS=$('osrc').value,oC=$('ocol').value,aC=$('acol').value,bN=$('bname').value||'Balance';
+ const hasO=oS!=='none',hasB=hasO&&aC!=='',T=$('title').value;
+ const R=rules();
+ const colsFor=rs=>show.filter(c=>R.filter(x=>x.t===c&&x.m!=='row').every(x=>{const f=r=>test(r[x.c||c],x.o,x.v);return x.m==='any'?rs.some(f):rs.every(f)}));
+ const rowOK=(r,c)=>R.filter(x=>x.t===c&&x.m==='row').every(x=>test(r[x.c||c],x.o,x.v));
+ const isN=c=>c===BAL||isNum(c);
+ $('fs')||document.head.appendChild(Object.assign(document.createElement('style'),{id:'fs'}));
+ $('fs').textContent=`.page h2{${cs('T')};${al('T')}}.page th{${cs('H')}}.page th,.page th.n{${al('H')}}.page td{${cs('B')}}.page td,.page td.n{${al('B')}}.page tfoot td,.page tr.tot td{font-weight:700}.page .gt,.page .ob{font-family:${$('fBf').value}}`;
+ const kp=[0,1,2].map(i=>({d:$('kd'+i).value,b:$('kb'+i).value})).filter(p=>p.d&&p.b);let dup=0;const bmap=new Map();
+ if(oS==='sheet'&&kp.length){const vc=$('bvc').value;balRows.forEach(r=>{const k=kp.map(p=>norm(r[p.b])).join('\u0001');if(!k.replace(/\u0001/g,''))return;if(bmap.has(k))dup++;else bmap.set(k,num(r[vc]))})}
+ const fromSheet=(k,rs)=>kp.length?bmap.get(kp.map(p=>norm(rs[0][p.d])).join('\u0001')):undefined;
+ const m=new Map();rows.forEach(r=>{const k=gc.length?gc.map(c=>r[c]).join(' | '):'All records';(m.get(k)||m.set(k,[]).get(k)).push(r)});
+ const groups=[...m].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([k,rs])=>({k,rs,cols:colsFor(rs),lbl:gc.length?gc.map(c=>`${c}: ${rs[0][c]}`).join(' · '):'',
+  open:oS==='man'?(obal[k]||0):oS==='sheet'?(obal[k]!==undefined?obal[k]:(fromSheet(k,rs)??0)):oS==='col'?num(rs[0][oC]):oS==='sum'?rs.reduce((a,r)=>a+num(r[oC]),0):0}));
+ $('manL').style.display=oS==='man'||oS==='sheet'?'flex':'none';$('shRow').style.display=oS==='sheet'?'block':'none';
+ const miss=oS==='sheet'?groups.filter(g=>fromSheet(g.k,g.rs)===undefined).map(g=>g.k):[];
+ $('shMsg').innerHTML=oS==='sheet'?(kp.length?`<small>${groups.length-miss.length} of ${groups.length} tables matched in the balance sheet${miss.length?'. Not found: '+esc(miss.slice(0,6).join(', '))+(miss.length>6?'…':'')+' (treated as 0)':''}${dup?`. ${dup} repeated combination(s) in the balance sheet; the first row is used`:''}. Boxes below are optional overrides.</small>`:'<small>Choose at least one matching column pair.</small>'):'';
+ const sig=oS+'\u0001'+groups.map(g=>g.k).join('\u0001');
+ if((oS==='man'||oS==='sheet')&&sig!==manSig){manSig=sig;$('manL').innerHTML=groups.map(g=>`<label>${esc(g.k)} <input type="number" step="any" data-k="${esc(g.k)}" value="${obal[g.k]??''}" placeholder="${oS==='sheet'?(fromSheet(g.k,g.rs)??''):''}" style="width:110px"></label>`).join('')}
+ const P=$('paper').value,O=$('ori').value,L=O==='landscape';
+ const dim={A4:[210,297],Letter:[215.9,279.4],Legal:[215.9,355.6]}[P];
+ const w=L?dim[1]:dim[0],h=(L?dim[0]:dim[1])-1,mm=id=>Math.max(0,+$(id).value||0)*25.4;
+ const pad=`${mm('mT')}mm ${mm('mR')}mm ${mm('mB')}mm ${mm('mL')}mm`;
+ $('ps')||document.head.appendChild(Object.assign(document.createElement('style'),{id:'ps'}));
+ $('ps').textContent=`@page{size:${P} ${O};margin:0}`;
+ const date=new Date().toLocaleDateString('en-GB'),pages=[];let N=99;
+ const fst=k=>`${cs(k)};text-align:${$('f'+k+'a').value}`;
+ const tok=(s,i)=>esc(s.replace(/\{page\}/g,i+1).replace(/\{pages\}/g,N).replace(/\{date\}/g,date).replace(/\{title\}/g,T));
+ const ftr=i=>['L','C','R'].map(k=>`<div style="${fst(k)}">${tok($('f'+k).value,i)}</div>`).join('');
+ const over=p=>p.bd.scrollHeight>p.bd.clientHeight+1;
+ const newPage=()=>{const p=document.createElement('div');p.className='page';p.style.cssText=`width:${w}mm;height:${h}mm;padding:${pad}`;
+  p.innerHTML=`<div class="bd">${$('tOn').checked?`<h2>${esc(T)}</h2>`:''}</div><div class="ft">${ftr(pages.length)}</div>`;p.bd=p.firstChild;out.appendChild(p);pages.push(p);return p};
+ const BAL='\u0000bal',lab=c=>c===BAL?bN:c,bp=$('bpos').value;
+ const ord=cs=>{if(!hasB)return cs;if(bp==='S')return [BAL,...cs];const i=bp.startsWith('A:')?cs.indexOf(bp.slice(2)):-1;return i<0?[...cs,BAL]:[...cs.slice(0,i+1),BAL,...cs.slice(i+1)]};
+ const cnOf=b=>b.d.querySelector('.cn'),noCn=b=>{const c=cnOf(b);c&&c.remove()},addCn=b=>{cnOf(b)||b.d.insertAdjacentHTML('beforeend','<div class="cn">Continued on next page…</div>')};
+ const addBlock=(page,g,cont,bal)=>{const vis=ord(g.cols),raw=vis.map(c=>colW[lab(c)]||10),sm=raw.reduce((a,b)=>a+b,0),pct=raw.map(x=>x/sm*100);const d=document.createElement('div');d.className='blk';
+  d.innerHTML=(g.lbl?`<div class="gt">${esc(g.lbl)}${cont?' (cont.)':''}</div>`:'')+(hasO?`<div class="ob">${cont?'Balance b/f':'Opening balance'}: <b>${fmt(cont?bal:g.open)}</b></div>`:'')
+  +`<table><colgroup>${pct.map((p,i)=>`<col data-i="${i}" style="width:${p}%">`).join('')}</colgroup><thead><tr>${vis.map((c,i)=>`<th class="${isN(c)?'n':''}">${esc(lab(c))}${i<vis.length-1?`<i class="rz" data-i="${i}"></i>`:''}</th>`).join('')}</tr></thead><tbody></tbody></table><div class="cn">Continued on next page…</div>`;
+  page.bd.appendChild(d);const tbl=d.querySelector('table');tbl._vis=vis.map(lab);tbl._pct=pct;return{d,tbl,tb:d.querySelector('tbody')}};
+ const mkRow=(r,nb,bb,g)=>{const tr=document.createElement('tr');tr._bb=bb;
+  tr.innerHTML=ord(g.cols).map(c=>c===BAL?`<td class="n ${nb<0?'neg':''}">${fmt(nb)}</td>`:`<td class="${isNum(c)?'n':''}">${esc(rowOK(r,c)?r[c]:'')}</td>`).join('');return tr};
+ const mkTot=(g,bal)=>{const tf=document.createElement('tfoot');
+  const o=ord(g.cols),fi=o.findIndex(x=>x!==BAL);tf.innerHTML='<tr>'+o.map((c,j)=>{if(c===BAL)return `<td class="n ${bal<0?'neg':''}">${fmt(bal)}</td>`;const f=F.find(x=>x.c===c);return `<td class="n">${f?fmt(agg(g.rs.filter(r=>rowOK(r,c)),c,f.f)):j===fi?'<b>Total</b>':''}</td>`}).join('')+'</tr>';return tf};
+ let page=null,lastB=null,placed=0;
+ groups.forEach(g=>{
+  const brk=bc.length?bc.map(c=>g.rs[0][c]).join('|'):null;
+  if(!page||(bc.length&&brk!==lastB))page=newPage();lastB=brk;
+  let bal=g.open,cont=false,blk=addBlock(page,g,false,bal),n=0;
+  const only=()=>page.bd.querySelectorAll('.blk').length===1;
+  g.rs.forEach((r,ix)=>{
+   const nb=bal-(hasB?num(r[aC]):0),tr=mkRow(r,nb,bal,g);blk.tb.appendChild(tr);n++;placed++;if(ix===g.rs.length-1&&over(page))noCn(blk);
+   if(over(page)&&!(n===1&&only())){
+    blk.tb.removeChild(tr);
+    if(n===1)page.bd.removeChild(blk.d);else{cont=true;addCn(blk)}
+    page=newPage();blk=addBlock(page,g,cont,bal);blk.tb.appendChild(tr);n=1}
+   bal=nb});
+  noCn(blk);
+  if(tot){const tf=mkTot(g,bal);blk.tbl.appendChild(tf);
+   if(over(page)&&!(n===1&&only())){blk.tbl.removeChild(tf);
+    const last=blk.tb.lastChild;blk.tb.removeChild(last);
+    const empty=!blk.tb.children.length;if(empty)page.bd.removeChild(blk.d);else addCn(blk);
+    page=newPage();blk=addBlock(page,g,empty?cont:true,last._bb);blk.tb.appendChild(last);blk.tbl.appendChild(tf);noCn(blk)}}
+ });
+ if($('sumOn').checked){
+  const labc=gc.length?gc:['Group'],cn=$('cnt').checked;
+  const head=[...labc,...(cn?['Rows']:[]),...(hasO?['Opening']:[]),...(hasB?['Allotted','Closing']:[]),...F.map(x=>`${({sum:'Sum',avg:'Average',min:'Min',max:'Max',count:'Count'})[x.f]} of ${x.c}`)];
+  const row=(rs,lab,op)=>{const al=hasB?agg(rs,aC,'sum'):0;return [...lab,...(cn?[fmt(rs.length)]:[]),...(hasO?[fmt(op)]:[]),...(hasB?[fmt(al),fmt(op-al)]:[]),...F.map(x=>fmt(agg(rs,x.c,x.f)))]};
+  const body=groups.map(g=>row(g.rs,gc.length?gc.map(c=>g.rs[0][c]):['All records'],g.open));
+  body.push(row(rows,labc.map((c,i)=>i?'':'Grand total'),groups.reduce((a,g)=>a+g.open,0)));
+  const sk=head.map(h=>'§'+h),sr=sk.map(k=>colW[k]||10),ss=sr.reduce((a,b)=>a+b,0),sp=sr.map(x=>x/ss*100);
+  let pg=newPage(),tb,tbl,cnS,first=true;
+  const mk=()=>{pg.bd.insertAdjacentHTML('beforeend',`<div class="gt">${esc($('sumT').value)}${first?'':' (cont.)'}</div><table class="st"><colgroup>${sp.map(q=>`<col style="width:${q}%">`).join('')}</colgroup><thead><tr>${head.map((x,i)=>`<th class="${i>=labc.length?'n':''}">${esc(x)}${i<head.length-1?`<i class="rz" data-i="${i}"></i>`:''}</th>`).join('')}</tr></thead><tbody></tbody></table><div class="cn">Continued on next page…</div>`);
+   tbl=pg.bd.querySelector('table');cnS=pg.bd.querySelector('.cn');tbl._vis=sk;tbl._pct=sp.slice();tb=tbl.querySelector('tbody');first=false};
+  mk();
+  const rowEl=(r,i)=>{const tr=document.createElement('tr');if(i===body.length-1)tr.className='tot';tr.innerHTML=r.map((c,j)=>`<td class="${j>=labc.length?'n':''}">${esc(c)}</td>`).join('');return tr};
+  body.forEach((r,i)=>{const tr=rowEl(r,i),lastR=i===body.length-1;tb.appendChild(tr);
+   if(lastR&&over(pg))cnS.remove();
+   if(over(pg)&&tb.children.length>1){tb.removeChild(tr);const mv=[tr];
+    if(lastR&&tb.children.length>1){mv.unshift(tb.lastChild);tb.removeChild(tb.lastChild)}
+    if(!cnS.isConnected)tbl.insertAdjacentElement('afterend',cnS);
+    pg=newPage();mk();mv.forEach(x=>tb.appendChild(x));if(lastR)cnS.remove()}
+   else if(lastR)cnS.remove()})}
+ N=pages.length;pages.forEach((p,i)=>p.lastChild.innerHTML=ftr(i));
+ $('info').textContent=`${N} pages · ${placed} of ${rows.length} rows placed`}
+$('ctl').addEventListener('input',e=>{if(e.target.dataset.k!==undefined){if(e.target.value==='')delete obal[e.target.dataset.k];else obal[e.target.dataset.k]=num(e.target.value)}rows.length&&render()});
+$('ctl').addEventListener('change',()=>rows.length&&render());
+$('rw').onclick=()=>{colW={};render()};
+$('print').onclick=()=>window.print();
+$('out').addEventListener('pointerdown',e=>{const z=e.target.closest('.rz');if(!z)return;e.preventDefault();z.setPointerCapture(e.pointerId);
+ const tb=z.closest('table'),i=+z.dataset.i,x0=e.clientX,tw=tb.offsetWidth,s=tb._pct.slice(),cl=tb.querySelectorAll('col');
+ const mv=ev=>{let d=(ev.clientX-x0)/tw*100;d=Math.max(3-s[i],Math.min(s[i+1]-3,d));
+  cl[i].style.width=(s[i]+d)+'%';cl[i+1].style.width=(s[i+1]-d)+'%';tb._pct[i]=s[i]+d;tb._pct[i+1]=s[i+1]-d};
+ const up=()=>{z.removeEventListener('pointermove',mv);z.removeEventListener('pointerup',up);tb._vis.forEach((c,k)=>colW[c]=tb._pct[k]);render()};
+ z.addEventListener('pointermove',mv);z.addEventListener('pointerup',up)});
+</script></body></html>
