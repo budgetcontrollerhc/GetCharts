@@ -32,6 +32,9 @@ th,td{border:1px solid #999;padding:3px 5px;text-align:left;overflow-wrap:anywhe
 th{background:#e8ebf1}
 tfoot td,tr.tot td{font-weight:700;background:#f3f4f7}
 .n{text-align:right}.neg{color:#b00020}
+.al-l{text-align:left}.al-c{text-align:center}.al-r{text-align:right}.al-j{text-align:justify}
+.ci{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--bd);border-radius:6px;padding:3px 6px}
+.ci select{font-size:12px;padding:2px 4px}
 .rz{position:absolute;right:-4px;top:0;bottom:0;width:8px;cursor:col-resize;z-index:2;touch-action:none}
 .rz:hover{background:#2456d655}
 .ft{flex:none;padding-top:5px;border-top:1px solid #777;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;white-space:pre-wrap}
@@ -47,7 +50,9 @@ tfoot td,tr.tot td{font-weight:700;background:#f3f4f7}
  <div class="row"><input type="file" id="file" accept=".xlsx,.xls,.ods,.csv,.xlsm"></div>
  <div class="row"><label>Sheet <select id="sheet"></select></label><label>Rows to skip above header <input type="number" id="skip" value="0" min="0" style="width:60px"></label></div>
  <small>Runs in your browser; the file is never uploaded.</small></details>
-<details><summary>2. Columns to show</summary><div class="list" id="showL"></div></details>
+<details><summary>2. Columns to show</summary>
+ <div class="row"><label>Alignment for all columns <select id="alAll"><option value="">— choose to apply to every column —</option><option value="sheet">Same as sheet</option><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option><option value="auto">Auto (numbers right)</option></select></label></div>
+ <small id="alNote"></small><div class="list" id="showL"></div></details>
 <details><summary>3. Show a column only on a condition</summary>
  <small>Each rule decides when a column is displayed.</small><div id="ruleL"></div>
  <div class="row"><button id="addR" type="button">+ Add rule</button></div></details>
@@ -56,29 +61,36 @@ tfoot td,tr.tot td{font-weight:700;background:#f3f4f7}
  <div style="margin-top:8px"><small>Start a new page when these change:</small></div><div class="list" id="brkL"></div>
  <div class="row"><label><input type="checkbox" id="tot" checked> Total row under each table</label>
  <button id="rw" type="button">Reset column widths</button></div>
+ <div id="totBox"><div style="margin-top:8px"><small>Show a total under these columns (tick only the amount columns; untick codes, numbers and anything that should not be added):</small></div>
+ <div class="row"><button id="totNum" type="button">Tick all numeric</button><button id="totNone" type="button">Untick all</button></div>
+ <div class="list" id="totL"></div>
+ <small>Each ticked column uses the calculation chosen for it in section 6 (sum if none is chosen). If a balance column is added, its closing balance is always shown.</small></div>
  <small>Drag the right edge of any column heading in the preview to resize it.</small></details>
 <details><summary>5. Opening &amp; running balance</summary>
  <div class="row"><label>Opening balance <select id="osrc"><option value="none">None</option><option value="col">From column (first row of each table)</option><option value="sum">Sum of column per table</option><option value="man">Enter manually per table</option><option value="sheet">From another sheet in the file (matched by table name)</option></select></label>
  <label>Column <select id="ocol"></select></label></div>
- <div class="row"><label>Proposed allotment column <select id="acol"></select></label><label>Balance column title <input type="text" id="bname" value="Balance after allotment"></label><label>Balance column position <select id="bpos"><option value="E">At the end</option></select></label></div>
+ <div class="row"><label>Proposed allotment column <select id="acol"></select></label><label>Balance column title <input type="text" id="bname" value="Balance after allotment"></label><label>Balance column position <select id="bpos"><option value="E">At the end</option></select></label><label>Balance alignment <select id="bal"><option value="right">Right</option><option value="center">Centre</option><option value="left">Left</option></select></label></div>
  <div id="shRow" style="display:none"><div class="row"><label>Balance sheet <select id="bsh"></select></label><label>Rows to skip <input type="number" id="bskip" value="0" min="0" style="width:56px"></label><label>Balance amount column <select id="bvc"></select></label></div><small>Match each table to a balance-sheet row on up to three columns (e.g. Head and Preliminary Unit):</small><div class="row"><label>1. Table column <select id="kd0"></select></label><label>= balance-sheet column <select id="kb0"></select></label></div><div class="row"><label>2. Table column <select id="kd1"></select></label><label>= balance-sheet column <select id="kb1"></select></label></div><div class="row"><label>3. Table column <select id="kd2"></select></label><label>= balance-sheet column <select id="kb2"></select></label></div></div>
  <div id="shMsg"></div><div class="list" id="manL"></div></details>
 <details><summary>6. Last-page summary</summary>
  <div class="row"><label>Title <input type="text" id="sumT" value="Summary"></label><label><input type="checkbox" id="sumOn" checked> Include</label><label><input type="checkbox" id="cnt" checked> Row count</label></div>
- <small>Calculation per column (also used in table total rows):</small><div class="list" id="sumL"></div></details>
+ <div class="row"><label>Summarise by <select id="sumBy"><option value="tbl">Same as the tables (section 4)</option><option value="cus">Columns I choose below</option></select></label></div>
+ <div class="list" id="sumG" style="display:none"></div>
+ <small id="sumGn" style="display:none">One summary row for each combination of the ticked columns; tick none for a single overall row. Opening / Closing balances are shown when every table falls inside one summary row.</small>
+ <div style="margin-top:8px"><small>Calculation per column (extra summary columns; also the calculation used in table total rows for ticked columns). Choose "—" for columns that should not be added:</small></div><div class="list" id="sumL"></div></details>
 <details><summary>7. Page setup</summary>
  <div class="row"><label>Paper size <select id="paper"><option>A4</option><option>Letter</option><option>Legal</option></select></label>
  <label>Orientation <select id="ori"><option value="portrait">Portrait</option><option value="landscape">Landscape</option></select></label></div>
  <div class="row"><span>Margins (inches):</span><label>Top <input type="number" id="mT" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Right <input type="number" id="mR" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Bottom <input type="number" id="mB" value="1" step="0.1" min="0" max="3" style="width:56px"></label><label>Left <input type="number" id="mL" value="1" step="0.1" min="0" max="3" style="width:56px"></label></div>
  <div class="row"><label>Report title <input type="text" id="title" value="Report"></label><label><input type="checkbox" id="tOn" checked> Show title on every page</label></div></details>
-<details><summary>8. Text formatting</summary><div id="fmt"></div></details>
+<details><summary>8. Text formatting</summary><small>Align "auto" for headings and body follows the per-column setting in section 2; choosing left / centre / right here overrides every column.</small><div id="fmt"></div></details>
 <details><summary>9. Footer</summary><small>Tokens: {page} {pages} {date} {title}. Left, centre and right sections are formatted separately.</small><div id="fsec"></div></details>
 <div class="row"><button id="print">Print / Save as PDF</button><span id="info"></span></div>
 </div>
 <div id="wrap"><div id="out"></div></div>
 <script>
 const $=id=>document.getElementById(id);
-let balRows=[],rows=[],cols=[],wb=null,colW={},obal={},manSig='',pct=[],curVis=[];
+let balRows=[],rows=[],cols=[],wb=null,colW={},obal={},manSig='',pct=[],curVis=[],lastOS='none';
 const FONTS=[['Arial','Arial,sans-serif'],['Times New Roman',"'Times New Roman',serif"],['Georgia','Georgia,serif'],['Verdana','Verdana,sans-serif'],['Calibri','Calibri,Arial,sans-serif'],['Courier New',"'Courier New',monospace"],['Mangal (Hindi)',"Mangal,'Noto Sans Devanagari',sans-serif"],['Nirmala UI (Hindi)',"'Nirmala UI','Noto Sans Devanagari',sans-serif"]];
 const fc=(k,n,sz,al,b,txt)=>`<fieldset><legend>${n}</legend>${txt===undefined?'':`<textarea id="f${k}" rows="2" style="width:100%">${txt}</textarea>`}<div class="row"><label>Font <select id="f${k}f">${FONTS.map(f=>`<option value="${f[1]}">${f[0]}</option>`).join('')}</select></label><label>Size <input type="number" id="f${k}s" value="${sz}" min="6" max="40" style="width:52px"></label><label><input type="checkbox" id="f${k}b" ${b?'checked':''}><b>B</b></label><label><input type="checkbox" id="f${k}i"><i>I</i></label><label><input type="checkbox" id="f${k}u"><u>U</u></label><label>Align <select id="f${k}a">${(txt===undefined?['auto']:[]).concat(['left','center','right','justify']).map(a=>`<option ${a===al?'selected':''}>${a}</option>`).join('')}</select></label><input type="color" id="f${k}c" value="${txt===undefined?'#000000':'#333333'}"></div></fieldset>`;
 $('fmt').innerHTML=fc('T','Report title',16,'left',1)+fc('H','Column headings',12,'auto',1)+fc('B','Table body',12,'auto',0);
@@ -86,7 +98,7 @@ $('fsec').innerHTML=fc('L','Left section',11,'left',0,'{title}')+fc('C','Centre 
 const cs=k=>`font-family:${$('f'+k+'f').value};font-size:${+$('f'+k+'s').value||12}px;font-weight:${$('f'+k+'b').checked?700:400};font-style:${$('f'+k+'i').checked?'italic':'normal'};text-decoration:${$('f'+k+'u').checked?'underline':'none'};color:${$('f'+k+'c').value}`;
 const al=k=>{const a=$('f'+k+'a').value;return a==='auto'?'':`text-align:${a}`};
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const num=v=>{const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n};
+const num=v=>{if(typeof v==='number')return isFinite(v)?v:0;let t=String(v??'').replace(/[\u2212\u2012\u2013]/g,'-').trim();const ng=/^\(.*\)$/.test(t)||/^[^-]*\d\s*-$/.test(t);const n=parseFloat(t.replace(/[^0-9.\-]/g,''));return isNaN(n)?0:(ng&&n>0?-n:n)};
 const fmt=n=>n.toLocaleString('en-IN',{maximumFractionDigits:2});
 const got=nm=>[...document.querySelectorAll(`input[name=${nm}]:checked`)].map(i=>i.value);
 const checks=(id,nm,sel)=>$(id).innerHTML=cols.map(c=>`<label><input type=checkbox name="${nm}" value="${esc(c)}" ${sel(c)?'checked':''}>${esc(c)}</label>`).join('');
@@ -94,27 +106,63 @@ const isNum=c=>rows.length&&rows.slice(0,50).filter(r=>r[c]!=='').every(r=>!isNa
 function agg(rs,c,f){const v=rs.map(r=>r[c]).filter(x=>x!=='');if(f==='count')return v.length;const n=v.map(num);if(!n.length)return 0;
  return f==='sum'?n.reduce((a,b)=>a+b,0):f==='avg'?n.reduce((a,b)=>a+b,0)/n.length:f==='min'?Math.min(...n):Math.max(...n)}
 const fns=()=>[...document.querySelectorAll('select[data-sc]')].filter(s=>s.value).map(s=>({c:s.dataset.sc,f:s.value}));
-$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;wb=XLSX.read(await f.arrayBuffer(),{type:'array',bookFiles:true});initAl();
  $('sheet').innerHTML=wb.SheetNames.map(n=>`<option>${esc(n)}</option>`).join('');$('bsh').innerHTML=$('sheet').innerHTML;if(wb.SheetNames[1])$('bsh').value=wb.SheetNames[1];load();loadBal()};
 $('sheet').onchange=$('skip').onchange=()=>wb&&load();
-let balHeads=[];
-const norm=x=>String(x??'').trim().toLowerCase().replace(/\s+/g,' ');
+let balHeads=[],balRaw=[],autoAl={},xfH=null,shPath={},alCache={};
+/* ---- read horizontal alignment of cells from an .xlsx (SheetJS CE does not expose it) ---- */
+const HM={left:'left',center:'center',centerContinuous:'center',right:'right',justify:'justify',distributed:'justify',fill:'left'};
+function initAl(){xfH=null;shPath={};alCache={};
+ try{if(!wb||!wb.files)return;
+  const rd=p=>{const f=wb.files[p];if(!f)return '';const c=f.content;return typeof c==='string'?c:new TextDecoder('utf-8').decode(c)};
+  const dp=s=>new DOMParser().parseFromString(s,'application/xml');
+  const st=rd('xl/styles.xml');if(!st)return;
+  const cx=dp(st).getElementsByTagName('cellXfs')[0];if(!cx)return;
+  const h=[...cx.children].map(x=>{const a=x.getElementsByTagName('alignment')[0];return a?(HM[a.getAttribute('horizontal')]||''):''});
+  const rl={};[...dp(rd('xl/_rels/workbook.xml.rels')).getElementsByTagName('Relationship')].forEach(r=>rl[r.getAttribute('Id')]=r.getAttribute('Target'));
+  [...dp(rd('xl/workbook.xml')).getElementsByTagName('sheet')].forEach(s=>{const t=rl[s.getAttribute('r:id')];if(t)shPath[s.getAttribute('name')]=t[0]==='/'?t.slice(1):'xl/'+t});
+  xfH=h}catch(e){xfH=null}}
+const colIdx=L=>L.split('').reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1;
+function sheetAlign(){autoAl={};const name=$('sheet').value,skip=+$('skip').value||0;
+ try{if(!xfH||!shPath[name]||!wb.files[shPath[name]])return;
+  let cells=alCache[name];
+  if(!cells){cells=alCache[name]=[];const c=wb.files[shPath[name]].content,x=typeof c==='string'?c:new TextDecoder('utf-8').decode(c);
+   const re=/<c\s([^>]*?)\/?>/g;let m;
+   while((m=re.exec(x))){if(m[0].endsWith('/>'))continue;const a=m[1],r=/\br="([A-Z]+)(\d+)"/.exec(a);if(!r)continue;const sv=/\bs="(\d+)"/.exec(a);cells.push([+r[2]-1,colIdx(r[1]),sv?(xfH[+sv[1]]||''):''])}}
+  const s0=XLSX.utils.decode_range(wb.Sheets[name]['!ref']||'A1').s.c,T={};
+  cells.forEach(([r,c,h])=>{if(r<=skip||c<s0)return;const t=T[c-s0]||(T[c-s0]={});t[h]=(t[h]||0)+1});
+  cols.forEach((c,i)=>{const t=T[i];if(!t)return;let best='',n=0;['left','center','right','justify'].forEach(k=>{if((t[k]||0)>n){n=t[k];best=k}});if(best&&n>=(t['']||0))autoAl[c]=best})
+ }catch(e){autoAl={}}}
+/* copy the value of vertically merged cells into the cells below them */
+function fillMerges(ws){const mg=ws&&ws['!merges'];if(!mg||!mg.length)return ws;const c=Object.assign({},ws);
+ mg.forEach(r=>{if(r.e.r<=r.s.r)return;const tl=ws[XLSX.utils.encode_cell(r.s)];if(!tl)return;
+  for(let R=r.s.r+1;R<=r.e.r;R++)for(let C=r.s.c;C<=r.e.c;C++){const a=XLSX.utils.encode_cell({r:R,c:C});if(!ws[a])c[a]=tl}});return c}
+const norm=x=>{let t=String(x??'').normalize('NFC').replace(/[\u00a0\u200b-\u200d\ufeff]/g,' ').trim().toLowerCase().replace(/\s+/g,' ');if(/^[+-]?\d[\d,]*(\.\d+)?$/.test(t)){const n=parseFloat(t.replace(/,/g,''));if(!isNaN(n))t=String(n)}return t};
 function fillPairs(){
  const od='<option value="">— none —</option>'+cols.map(c=>`<option>${esc(c)}</option>`).join(''),ob='<option value="">— none —</option>'+balHeads.map(c=>`<option>${esc(c)}</option>`).join('');
+ const prev=[0,1,2].map(i=>[$('kd'+i).value,$('kb'+i).value]);
  for(let i=0;i<3;i++){$('kd'+i).innerHTML=od;$('kb'+i).innerHTML=ob}
+ let kept=0;prev.forEach((p,i)=>{if(p[0]&&p[1]&&cols.includes(p[0])&&balHeads.includes(p[1])){$('kd'+i).value=p[0];$('kb'+i).value=p[1];kept++}});
+ if(kept)return;
  let n=0;balHeads.slice(0,-1).forEach(h=>{const c=cols.find(x=>norm(x)===norm(h));if(c&&n<3){$('kd'+n).value=c;$('kb'+n).value=h;n++}})}
 function loadBal(r=true){if(!wb||!$('bsh').value)return;
- balRows=XLSX.utils.sheet_to_json(wb.Sheets[$('bsh').value],{defval:'',raw:false,range:+$('bskip').value||0});
+ const ws=fillMerges(wb.Sheets[$('bsh').value]),rg=+$('bskip').value||0,pv=$('bvc').value;
+ balRows=XLSX.utils.sheet_to_json(ws,{defval:'',raw:false,range:rg});
+ balRaw=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true,range:rg});
  balHeads=balRows.length?Object.keys(balRows[0]):[];
- $('bvc').innerHTML=balHeads.map(c=>`<option>${esc(c)}</option>`).join('');if(balHeads.length)$('bvc').value=balHeads[balHeads.length-1];
+ $('bvc').innerHTML=balHeads.map(c=>`<option>${esc(c)}</option>`).join('');
+ if(balHeads.length){const isAmt=h=>{const v=balRows.map(r=>r[h]).filter(x=>x!=='');return v.length&&v.filter(x=>!isNaN(parseFloat(String(x).replace(/[,()\s]/g,''))) ).length/v.length>.8};
+  const nh=balHeads.filter(isAmt);$('bvc').value=balHeads.includes(pv)?pv:(nh.length?nh[nh.length-1]:balHeads[balHeads.length-1])}
  fillPairs();r&&render()}
 $('bsh').onchange=$('bskip').onchange=()=>loadBal();
 function load(){
  rows=XLSX.utils.sheet_to_json(wb.Sheets[$('sheet').value],{defval:'',raw:false,range:+$('skip').value||0});
  cols=rows.length?Object.keys(rows[0]):[];colW={};obal={};manSig='';$('ruleL').innerHTML='';fillPairs();
- checks('showL','show',()=>1);checks('grpL','grp',()=>0);checks('brkL','brk',()=>0);
+ sheetAlign();$('alNote').textContent=xfH?'"Same as sheet" reads the alignment of each column from the cell formatting of the uploaded file.':'This file type carries no alignment information, so "Same as sheet" shows numbers on the right and text on the left. Pick an alignment per column if you want something else.';
+ $('showL').innerHTML=cols.map(c=>`<span class="ci"><label><input type=checkbox name="show" value="${esc(c)}" checked>${esc(c)}</label><select data-al="${esc(c)}" title="Alignment of this column"><option value="sheet">Same as sheet</option><option value="left">Left</option><option value="center">Centre</option><option value="right">Right</option><option value="auto">Auto (numbers right)</option></select></span>`).join('');checks('grpL','grp',()=>0);checks('brkL','brk',()=>0);
  const op=cols.map(c=>`<option>${esc(c)}</option>`).join('');
  $('ocol').innerHTML=op;$('acol').innerHTML='<option value="">— none —</option>'+op;$('bpos').innerHTML='<option value="E">At the end</option><option value="S">At the start</option>'+cols.map(c=>`<option value="A:${esc(c)}">After: ${esc(c)}</option>`).join('');
+ $('totL').innerHTML=cols.map(c=>`<label><input type=checkbox name="tc" value="${esc(c)}">${esc(c)}</label>`).join('');$('sumG').innerHTML=cols.map(c=>`<label><input type=checkbox name="sg" value="${esc(c)}">${esc(c)}</label>`).join('');
  $('sumL').innerHTML=cols.map(c=>`<label>${esc(c)} <select data-sc="${esc(c)}"><option value="">—</option>${['sum','avg','min','max','count'].map(f=>`<option ${isNum(c)&&f==='sum'?'selected':''}>${f}</option>`).join('')}</select></label>`).join('');
  render()}
 const OPS=['=','≠','>','≥','<','≤','contains','empty','notempty'];
@@ -135,19 +183,22 @@ function render(){
  const R=rules();
  const colsFor=rs=>show.filter(c=>R.filter(x=>x.t===c&&x.m!=='row').every(x=>{const f=r=>test(r[x.c||c],x.o,x.v);return x.m==='any'?rs.some(f):rs.every(f)}));
  const rowOK=(r,c)=>R.filter(x=>x.t===c&&x.m==='row').every(x=>test(r[x.c||c],x.o,x.v));
- const isN=c=>c===BAL||isNum(c);
  $('fs')||document.head.appendChild(Object.assign(document.createElement('style'),{id:'fs'}));
- $('fs').textContent=`.page h2{${cs('T')};${al('T')}}.page th{${cs('H')}}.page th,.page th.n{${al('H')}}.page td{${cs('B')}}.page td,.page td.n{${al('B')}}.page tfoot td,.page tr.tot td{font-weight:700}.page .gt,.page .ob{font-family:${$('fBf').value}}`;
+ $('fs').textContent=`.page h2{${cs('T')};${al('T')}}.page th{${cs('H')}}${['th','td'].map(t=>['','.n','.al-l','.al-c','.al-r','.al-j'].map(x=>'.page '+t+x).join(',')+`{${al(t==='th'?'H':'B')}}`).join('')}.page td{${cs('B')}}.page tfoot td,.page tr.tot td{font-weight:700}.page .gt,.page .ob{font-family:${$('fBf').value}}`;
  const kp=[0,1,2].map(i=>({d:$('kd'+i).value,b:$('kb'+i).value})).filter(p=>p.d&&p.b);let dup=0;const bmap=new Map();
- if(oS==='sheet'&&kp.length){const vc=$('bvc').value;balRows.forEach(r=>{const k=kp.map(p=>norm(r[p.b])).join('\u0001');if(!k.replace(/\u0001/g,''))return;if(bmap.has(k))dup++;else bmap.set(k,num(r[vc]))})}
- const fromSheet=(k,rs)=>kp.length?bmap.get(kp.map(p=>norm(rs[0][p.d])).join('\u0001')):undefined;
+ if(oS==='sheet'&&kp.length){const vc=$('bvc').value;balRows.forEach((r,i)=>{const k=kp.map(p=>norm(r[p.b])).join('\u0001');if(!k.replace(/\u0001/g,''))return;if(bmap.has(k))dup++;else{const rv=balRaw[i]&&balRaw[i][vc];bmap.set(k,num(typeof rv==='number'?rv:r[vc]))}})}
+ const keyOf=r=>kp.map(p=>norm(r[p.d])).join('\u0001');
+ const fromSheet=(k,rs)=>{if(!kp.length)return undefined;for(const r of rs){const v=bmap.get(keyOf(r));if(v!==undefined)return v}return undefined};
+ if(oS!==lastOS){obal={};manSig='';lastOS=oS}
  const m=new Map();rows.forEach(r=>{const k=gc.length?gc.map(c=>r[c]).join(' | '):'All records';(m.get(k)||m.set(k,[]).get(k)).push(r)});
  const groups=[...m].sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([k,rs])=>({k,rs,cols:colsFor(rs),lbl:gc.length?gc.map(c=>`${c}: ${rs[0][c]}`).join(' · '):'',
   open:oS==='man'?(obal[k]||0):oS==='sheet'?(obal[k]!==undefined?obal[k]:(fromSheet(k,rs)??0)):oS==='col'?num(rs[0][oC]):oS==='sum'?rs.reduce((a,r)=>a+num(r[oC]),0):0}));
+ $('sumG').style.display=$('sumGn').style.display=$('sumBy').value==='cus'?'flex':'none';$('sumGn').style.display=$('sumBy').value==='cus'?'block':'none';$('totBox').style.display=tot?'block':'none';
  $('manL').style.display=oS==='man'||oS==='sheet'?'flex':'none';$('shRow').style.display=oS==='sheet'?'block':'none';
  const miss=oS==='sheet'?groups.filter(g=>fromSheet(g.k,g.rs)===undefined).map(g=>g.k):[];
- $('shMsg').innerHTML=oS==='sheet'?(kp.length?`<small>${groups.length-miss.length} of ${groups.length} tables matched in the balance sheet${miss.length?'. Not found: '+esc(miss.slice(0,6).join(', '))+(miss.length>6?'…':'')+' (treated as 0)':''}${dup?`. ${dup} repeated combination(s) in the balance sheet; the first row is used`:''}. Boxes below are optional overrides.</small>`:'<small>Choose at least one matching column pair.</small>'):'';
- const sig=oS+'\u0001'+groups.map(g=>g.k).join('\u0001');
+ const vary=oS==='sheet'&&kp.length?groups.filter(g=>new Set(g.rs.map(keyOf)).size>1).length:0;
+ $('shMsg').innerHTML=oS==='sheet'?(kp.length?`<small>${groups.length-miss.length} of ${groups.length} tables matched in the balance sheet${miss.length?'. Not found: '+esc(miss.slice(0,10).join(', '))+(miss.length>10?'…':'')+' (treated as 0)':''}${dup?`. ${dup} repeated combination(s) in the balance sheet; the first row is used`:''}${vary?`. <b>${vary} table(s) contain rows with different values in the matching columns</b> – add those columns to “Separate table for each combination” in section 4 so each gets its own balance`:''}. Boxes below are optional overrides.</small>`:'<small>Choose at least one matching column pair.</small>'):'';
+ const sig=oS+'\u0001'+groups.map(g=>g.k).join('\u0001')+(oS==='sheet'?'\u0002'+groups.map(g=>fromSheet(g.k,g.rs)).join(','):'');
  if((oS==='man'||oS==='sheet')&&sig!==manSig){manSig=sig;$('manL').innerHTML=groups.map(g=>`<label>${esc(g.k)} <input type="number" step="any" data-k="${esc(g.k)}" value="${obal[g.k]??''}" placeholder="${oS==='sheet'?(fromSheet(g.k,g.rs)??''):''}" style="width:110px"></label>`).join('')}
  const P=$('paper').value,O=$('ori').value,L=O==='landscape';
  const dim={A4:[210,297],Letter:[215.9,279.4],Legal:[215.9,355.6]}[P];
@@ -163,16 +214,21 @@ function render(){
  const newPage=()=>{const p=document.createElement('div');p.className='page';p.style.cssText=`width:${w}mm;height:${h}mm;padding:${pad}`;
   p.innerHTML=`<div class="bd">${$('tOn').checked?`<h2>${esc(T)}</h2>`:''}</div><div class="ft">${ftr(pages.length)}</div>`;p.bd=p.firstChild;out.appendChild(p);pages.push(p);return p};
  const BAL='\u0000bal',lab=c=>c===BAL?bN:c,bp=$('bpos').value;
+ const AL={};document.querySelectorAll('select[data-al]').forEach(x=>AL[x.dataset.al]=x.value);
+ const ACL={left:'al-l',center:'al-c',right:'al-r',justify:'al-j'},alM={};
+ const alc=c=>{if(c in alM)return alM[c];let v=c===BAL?$('bal').value:(AL[c]||'sheet');if(v==='sheet')v=autoAl[c]||'auto';if(v==='auto')v=isNum(c)?'right':'left';return alM[c]=ACL[v]||'al-l'};
  const ord=cs=>{if(!hasB)return cs;if(bp==='S')return [BAL,...cs];const i=bp.startsWith('A:')?cs.indexOf(bp.slice(2)):-1;return i<0?[...cs,BAL]:[...cs.slice(0,i+1),BAL,...cs.slice(i+1)]};
  const cnOf=b=>b.d.querySelector('.cn'),noCn=b=>{const c=cnOf(b);c&&c.remove()},addCn=b=>{cnOf(b)||b.d.insertAdjacentHTML('beforeend','<div class="cn">Continued on next page…</div>')};
  const addBlock=(page,g,cont,bal)=>{const vis=ord(g.cols),raw=vis.map(c=>colW[lab(c)]||10),sm=raw.reduce((a,b)=>a+b,0),pct=raw.map(x=>x/sm*100);const d=document.createElement('div');d.className='blk';
   d.innerHTML=(g.lbl?`<div class="gt">${esc(g.lbl)}${cont?' (cont.)':''}</div>`:'')+(hasO?`<div class="ob">${cont?'Balance b/f':'Opening balance'}: <b>${fmt(cont?bal:g.open)}</b></div>`:'')
-  +`<table><colgroup>${pct.map((p,i)=>`<col data-i="${i}" style="width:${p}%">`).join('')}</colgroup><thead><tr>${vis.map((c,i)=>`<th class="${isN(c)?'n':''}">${esc(lab(c))}${i<vis.length-1?`<i class="rz" data-i="${i}"></i>`:''}</th>`).join('')}</tr></thead><tbody></tbody></table><div class="cn">Continued on next page…</div>`;
+  +`<table><colgroup>${pct.map((p,i)=>`<col data-i="${i}" style="width:${p}%">`).join('')}</colgroup><thead><tr>${vis.map((c,i)=>`<th class="${alc(c)}">${esc(lab(c))}${i<vis.length-1?`<i class="rz" data-i="${i}"></i>`:''}</th>`).join('')}</tr></thead><tbody></tbody></table><div class="cn">Continued on next page…</div>`;
   page.bd.appendChild(d);const tbl=d.querySelector('table');tbl._vis=vis.map(lab);tbl._pct=pct;return{d,tbl,tb:d.querySelector('tbody')}};
  const mkRow=(r,nb,bb,g)=>{const tr=document.createElement('tr');tr._bb=bb;
-  tr.innerHTML=ord(g.cols).map(c=>c===BAL?`<td class="n ${nb<0?'neg':''}">${fmt(nb)}</td>`:`<td class="${isNum(c)?'n':''}">${esc(rowOK(r,c)?r[c]:'')}</td>`).join('');return tr};
- const mkTot=(g,bal)=>{const tf=document.createElement('tfoot');
-  const o=ord(g.cols),fi=o.findIndex(x=>x!==BAL);tf.innerHTML='<tr>'+o.map((c,j)=>{if(c===BAL)return `<td class="n ${bal<0?'neg':''}">${fmt(bal)}</td>`;const f=F.find(x=>x.c===c);return `<td class="n">${f?fmt(agg(g.rs.filter(r=>rowOK(r,c)),c,f.f)):j===fi?'<b>Total</b>':''}</td>`}).join('')+'</tr>';return tf};
+  tr.innerHTML=ord(g.cols).map(c=>c===BAL?`<td class="${alc(c)} ${nb<0?'neg':''}">${fmt(nb)}</td>`:`<td class="${alc(c)}">${esc(rowOK(r,c)?r[c]:'')}</td>`).join('');return tr};
+ const tc=new Set(got('tc'));
+ const mkTot=(g,bal)=>{const o=ord(g.cols);if(!hasB&&!o.some(c=>c!==BAL&&tc.has(c)))return null;
+  const tf=document.createElement('tfoot'),fi=o.findIndex(x=>x!==BAL&&!tc.has(x));
+  tf.innerHTML='<tr>'+o.map((c,j)=>{if(c===BAL)return `<td class="${alc(c)} ${bal<0?'neg':''}">${fmt(bal)}</td>`;if(tc.has(c)){const f=F.find(x=>x.c===c);return `<td class="${alc(c)}">${fmt(agg(g.rs.filter(r=>rowOK(r,c)),c,f?f.f:'sum'))}</td>`}return `<td class="${alc(c)}">${j===fi?'<b>Total</b>':''}</td>`}).join('')+'</tr>';return tf};
  let page=null,lastB=null,placed=0;
  groups.forEach(g=>{
   const brk=bc.length?bc.map(c=>g.rs[0][c]).join('|'):null;
@@ -187,17 +243,22 @@ function render(){
     page=newPage();blk=addBlock(page,g,cont,bal);blk.tb.appendChild(tr);n=1}
    bal=nb});
   noCn(blk);
-  if(tot){const tf=mkTot(g,bal);blk.tbl.appendChild(tf);
+  const tf=tot?mkTot(g,bal):null;
+  if(tf){blk.tbl.appendChild(tf);
    if(over(page)&&!(n===1&&only())){blk.tbl.removeChild(tf);
     const last=blk.tb.lastChild;blk.tb.removeChild(last);
     const empty=!blk.tb.children.length;if(empty)page.bd.removeChild(blk.d);else addCn(blk);
     page=newPage();blk=addBlock(page,g,empty?cont:true,last._bb);blk.tb.appendChild(last);blk.tbl.appendChild(tf);noCn(blk)}}
  });
  if($('sumOn').checked){
-  const labc=gc.length?gc:['Group'],cn=$('cnt').checked;
-  const head=[...labc,...(cn?['Rows']:[]),...(hasO?['Opening']:[]),...(hasB?['Allotted','Closing']:[]),...F.map(x=>`${({sum:'Sum',avg:'Average',min:'Min',max:'Max',count:'Count'})[x.f]} of ${x.c}`)];
-  const row=(rs,lab,op)=>{const al=hasB?agg(rs,aC,'sum'):0;return [...lab,...(cn?[fmt(rs.length)]:[]),...(hasO?[fmt(op)]:[]),...(hasB?[fmt(al),fmt(op-al)]:[]),...F.map(x=>fmt(agg(rs,x.c,x.f)))]};
-  const body=groups.map(g=>row(g.rs,gc.length?gc.map(c=>g.rs[0][c]):['All records'],g.open));
+  const cn=$('cnt').checked,sg=$('sumBy').value==='cus'?got('sg'):gc,labc=sg.length?sg:['Group'];
+  const sKey=r=>sg.length?sg.map(c=>r[c]).join(' | '):'All records',sm=new Map();
+  rows.forEach(r=>{const k=sKey(r);(sm.get(k)||sm.set(k,{k,rs:[],open:0}).get(k)).rs.push(r)});
+  let canOpen=hasO;groups.forEach(g=>{const ks=[...new Set(g.rs.map(sKey))];if(ks.length===1)sm.get(ks[0]).open+=g.open;else canOpen=false});
+  const sgroups=[...sm.values()].sort((a,b)=>a.k.localeCompare(b.k,undefined,{numeric:true}));
+  const head=[...labc,...(cn?['Rows']:[]),...(canOpen?['Opening']:[]),...(hasB?(canOpen?['Allotted','Closing']:['Allotted']):[]),...F.map(x=>`${({sum:'Sum',avg:'Average',min:'Min',max:'Max',count:'Count'})[x.f]} of ${x.c}`)];
+  const row=(rs,lab,op)=>{const al=hasB?agg(rs,aC,'sum'):0;return [...lab,...(cn?[fmt(rs.length)]:[]),...(canOpen?[fmt(op)]:[]),...(hasB?(canOpen?[fmt(al),fmt(op-al)]:[fmt(al)]):[]),...F.map(x=>fmt(agg(rs,x.c,x.f)))]};
+  const body=sgroups.map(g=>row(g.rs,sg.length?sg.map(c=>g.rs[0][c]):['All records'],g.open));
   body.push(row(rows,labc.map((c,i)=>i?'':'Grand total'),groups.reduce((a,g)=>a+g.open,0)));
   const sk=head.map(h=>'§'+h),sr=sk.map(k=>colW[k]||10),ss=sr.reduce((a,b)=>a+b,0),sp=sr.map(x=>x/ss*100);
   let pg=newPage(),tb,tbl,cnS,first=true;
@@ -215,8 +276,10 @@ function render(){
  N=pages.length;pages.forEach((p,i)=>p.lastChild.innerHTML=ftr(i));
  $('info').textContent=`${N} pages · ${placed} of ${rows.length} rows placed`}
 $('ctl').addEventListener('input',e=>{if(e.target.dataset.k!==undefined){if(e.target.value==='')delete obal[e.target.dataset.k];else obal[e.target.dataset.k]=num(e.target.value)}rows.length&&render()});
-$('ctl').addEventListener('change',()=>rows.length&&render());
+$('ctl').addEventListener('change',e=>{if(e.target.id==='alAll'&&e.target.value){document.querySelectorAll('select[data-al]').forEach(x=>x.value=e.target.value);e.target.value=''}rows.length&&render()});
 $('rw').onclick=()=>{colW={};render()};
+$('totNum').onclick=()=>{document.querySelectorAll('input[name=tc]').forEach(i=>i.checked=isNum(i.value));rows.length&&render()};
+$('totNone').onclick=()=>{document.querySelectorAll('input[name=tc]').forEach(i=>i.checked=false);rows.length&&render()};
 $('print').onclick=()=>window.print();
 $('out').addEventListener('pointerdown',e=>{const z=e.target.closest('.rz');if(!z)return;e.preventDefault();z.setPointerCapture(e.pointerId);
  const tb=z.closest('table'),i=+z.dataset.i,x0=e.clientX,tw=tb.offsetWidth,s=tb._pct.slice(),cl=tb.querySelectorAll('col');
