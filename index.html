@@ -227,7 +227,7 @@ function render(){
   tr.innerHTML=ord(g.cols).map(c=>c===BAL?`<td class="${alc(c)} ${nb<0?'neg':''}">${fmt(nb)}</td>`:`<td class="${alc(c)}">${esc(rowOK(r,c)?r[c]:'')}</td>`).join('');return tr};
  const tc=new Set(got('tc'));
  const mkTot=(g,bal)=>{const o=ord(g.cols);if(!hasB&&!o.some(c=>c!==BAL&&tc.has(c)))return null;
-  const tf=document.createElement('tfoot'),fi=o.findIndex(x=>x!==BAL&&!tc.has(x));
+  const tf=document.createElement('tfoot'),t0=o.findIndex(x=>x===BAL||tc.has(x)),fi=t0>0?t0-1:o.findIndex(x=>x!==BAL&&!tc.has(x));
   tf.innerHTML='<tr>'+o.map((c,j)=>{if(c===BAL)return `<td class="${alc(c)} ${bal<0?'neg':''}">${fmt(bal)}</td>`;if(tc.has(c)){const f=F.find(x=>x.c===c);return `<td class="${alc(c)}">${fmt(agg(g.rs.filter(r=>rowOK(r,c)),c,f?f.f:'sum'))}</td>`}return `<td class="${alc(c)}">${j===fi?'<b>Total</b>':''}</td>`}).join('')+'</tr>';return tf};
  let page=null,lastB=null,placed=0;
  groups.forEach(g=>{
